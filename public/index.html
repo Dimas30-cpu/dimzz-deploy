@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>DIMZZ DEPLOY | 2026 Edition</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <style>
+    /* CSS DIPERTAHANKAN 100% SEPERTI ASLINYA */
+    :root {
+      --bg-dark: #050505;
+      --cyan-neon: #00ffff;
+      --blue-electric: #0066ff;
+      --purple-neon: #ff00ff;
+      --glass-bg: rgba(20, 20, 25, 0.65);
+      --glass-border: rgba(0, 255, 255, 0.15);
+      --glass-shadow: 0 8px 32px 0 rgba(0, 255, 255, 0.05);
+      --text-main: #ffffff;
+      --text-muted: #8892b0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow-x: hidden;
+      padding: 20px;
+    }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 255, 255, 0.3); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--cyan-neon); }
+    .bg-elements { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; overflow: hidden; }
+    .bg-grid {
+      position: absolute; width: 200%; height: 200%;
+      background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px; transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px); animation: gridMove 20s linear infinite;
+    }
+    .blur-circle { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; animation: floatBg 15s infinite alternate ease-in-out; }
+    .circle-1 { top: -10%; left: -10%; width: 400px; height: 400px; background: var(--blue-electric); }
+    .circle-2 { bottom: -10%; right: -10%; width: 300px; height: 300px; background: var(--purple-neon); animation-delay: -5s; }
+    .circle-3 { top: 40%; left: 60%; width: 250px; height: 250px; background: var(--cyan-neon); animation-delay: -10s; }
+    @keyframes gridMove { 0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); } 100% { transform: perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px); } }
+    @keyframes floatBg { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(30px, 50px) scale(1.2); } }
+    @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(0, 255, 128, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 255, 128, 0); } }
+    .app-container {
+      background: var(--glass-bg); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--glass-border); border-radius: 30px; padding: 40px; width: 100%; max-width: 680px;
+      box-shadow: var(--glass-shadow), inset 0 0 20px rgba(255,255,255,0.02); animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; position: relative; overflow: hidden;
+    }
+    .app-container::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--cyan-neon), transparent); opacity: 0.5; }
+    @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+    .title-group h1 { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #fff, var(--cyan-neon)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px; margin-bottom: 6px; }
+    .title-group p { color: var(--text-muted); font-size: 14px; font-weight: 500; }
+    .status-badge { display: flex; align-items: center; gap: 8px; background: rgba(0, 255, 128, 0.1); border: 1px solid rgba(0, 255, 128, 0.2); padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; color: #00ff80; }
+    .status-dot { width: 8px; height: 8px; background: #00ff80; border-radius: 50%; animation: pulse-green 2s infinite; }
+    .form-group { margin-bottom: 20px; position: relative; }
+    .input-wrapper { position: relative; display: flex; align-items: center; }
+    .input-icon { position: absolute; left: 18px; color: var(--cyan-neon); font-size: 18px; }
+    .modern-input { width: 100%; padding: 16px 16px 16px 48px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; color: white; font-size: 15px; font-family: 'Inter', sans-serif; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .modern-input:focus { outline: none; border-color: var(--cyan-neon); background: rgba(0, 255, 255, 0.05); box-shadow: 0 0 20px rgba(0, 255, 255, 0.15); }
+    .input-hint { display: block; margin-top: 8px; font-size: 12px; color: var(--text-muted); margin-left: 4px; }
+    .mode-selector { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .mode-btn { flex: 1; min-width: 80px; padding: 12px 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; color: var(--text-muted); font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .mode-btn.active { background: rgba(0, 255, 255, 0.08); border-color: var(--cyan-neon); color: var(--cyan-neon); box-shadow: 0 0 20px rgba(0, 255, 255, 0.05); }
+    .mode-btn:hover:not(.active) { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.15); }
+    .upload-zone { background: rgba(255, 255, 255, 0.02); border: 2px dashed rgba(0, 255, 255, 0.2); border-radius: 20px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--cyan-neon); background: rgba(0, 255, 255, 0.04); transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0, 255, 255, 0.08); }
+    .upload-icon { font-size: 48px; background: linear-gradient(135deg, var(--cyan-neon), var(--blue-electric)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 16px; display: inline-block; transition: transform 0.3s; }
+    .upload-zone:hover .upload-icon { transform: scale(1.1); }
+    .upload-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .upload-subtitle { font-size: 13px; color: var(--text-muted); }
+    .file-tree-container { display: none; margin-top: 16px; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 14px; padding: 12px 16px; border: 1px solid rgba(255,255,255,0.05); }
+    .file-tree-container .tree-item { font-size: 13px; padding: 3px 0; font-family: 'Inter', monospace; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+    .tree-item .fa-folder { color: #f1c40f; }
+    .tree-item .fa-file { color: var(--text-muted); }
+    .tree-stats { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+    .tree-stats span strong { color: white; }
+    .btn-deploy { width: 100%; padding: 18px; background: linear-gradient(135deg, var(--blue-electric), var(--cyan-neon)); background-size: 200% auto; border: none; border-radius: 16px; color: white; font-weight: 700; font-size: 16px; cursor: pointer; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 28px; position: relative; overflow: hidden; }
+    .btn-deploy::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); transition: 0.5s; }
+    .btn-deploy:hover:not(:disabled) { background-position: right center; transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0, 255, 255, 0.3); }
+    .btn-deploy:hover:not(:disabled)::before { left: 100%; }
+    .btn-deploy:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+    .progress-section { display: none; margin-top: 24px; padding: 24px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; animation: fadeIn 0.5s; }
+    .timeline { display: flex; flex-direction: column; gap: 16px; }
+    .timeline-step { display: flex; align-items: center; gap: 12px; opacity: 0.3; transition: all 0.4s; }
+    .timeline-step.active, .timeline-step.done { opacity: 1; }
+    .step-icon { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.4s; }
+    .timeline-step.active .step-icon { background: rgba(0, 255, 255, 0.2); color: var(--cyan-neon); box-shadow: 0 0 15px rgba(0,255,255,0.4); }
+    .timeline-step.done .step-icon { background: rgba(0, 255, 128, 0.2); color: #00ff80; }
+    .step-text { font-size: 14px; font-weight: 500; }
+    .progress-track { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-top: 20px; overflow: hidden; }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--blue-electric), var(--cyan-neon)); border-radius: 10px; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+    .result-card { display: none; margin-top: 24px; padding: 30px; border-radius: 20px; text-align: center; animation: slideUpFade 0.5s; }
+    .result-card.success { background: linear-gradient(145deg, rgba(0,255,128,0.05), rgba(0,255,255,0.05)); border: 1px solid rgba(0,255,128,0.2); }
+    .result-card.error { background: linear-gradient(145deg, rgba(255,0,64,0.05), rgba(255,0,0,0.05)); border: 1px solid rgba(255,0,64,0.2); }
+    .result-icon { font-size: 56px; margin-bottom: 16px; }
+    .result-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .success .result-title { color: #00ff80; }
+    .error .result-title { color: #ff3366; }
+    .url-box { background: rgba(0,0,0,0.4); padding: 16px; border-radius: 12px; border: 1px dashed rgba(0,255,255,0.3); margin: 20px 0; word-break: break-all; }
+    .url-box a { color: var(--cyan-neon); text-decoration: none; font-size: 15px; font-weight: 500; }
+    .url-box a:hover { text-decoration: underline; }
+    .action-buttons { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+    .btn-action { padding: 10px 20px; border-radius: 12px; border: none; font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 6px; }
+    .btn-outline { background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); }
+    .btn-outline:hover { background: rgba(255,255,255,0.1); }
+    .btn-primary { background: rgba(0,255,255,0.1); color: var(--cyan-neon); border: 1px solid var(--cyan-neon); }
+    .btn-primary:hover { background: var(--cyan-neon); color: black; }
+    .contact-bar { margin-top: 40px; padding-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: center; gap: 20px; }
+    .contact-link { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 50%; color: var(--text-muted); font-size: 18px; text-decoration: none; transition: all 0.4s; }
+    .contact-link:hover { background: rgba(0, 255, 255, 0.1); color: var(--cyan-neon); border-color: var(--cyan-neon); transform: translateY(-5px) scale(1.1); box-shadow: 0 10px 20px rgba(0,255,255,0.15); }
+    .footer { text-align: center; margin-top: 24px; color: var(--text-muted); font-size: 12px; font-weight: 500; }
+    .footer span { color: var(--cyan-neon); font-weight: 700; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .spinner { animation: spin 1s linear infinite; }
+    @media (max-width: 480px) { .app-container { padding: 24px; border-radius: 24px; } .header { flex-direction: column; gap: 12px; align-items: flex-start; } .title-group h1 { font-size: 26px; } .mode-btn { font-size: 11px; padding: 10px 6px; } .action-buttons { flex-direction: column; } .file-tree-container { max-height: 150px; } }
+  </style>
+</head>
+<body>
+
+  <div class="bg-elements">
+    <div class="bg-grid"></div>
+    <div class="blur-circle circle-1"></div>
+    <div class="blur-circle circle-2"></div>
+    <div class="blur-circle circle-3"></div>
+  </div>
+
+  <div class="app-container">
+    <div class="header">
+      <div class="title-group">
+        <h1>DIMZZ DEPLOY</h1>
+        <p>Deploy Project to Vercel securely</p>
+      </div>
+      <div class="status-badge">
+        <div class="status-dot"></div> ONLINE
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="input-wrapper">
+        <i class="fa-solid fa-cube input-icon"></i>
+        <input type="text" id="projectName" class="modern-input" placeholder="contoh: website-keren-dim" autocomplete="off">
+      </div>
+      <span class="input-hint" id="urlHint">Format URL akan disesuaikan Vercel</span>
+    </div>
+
+    <!-- Mode Selector -->
+    <div class="mode-selector" id="modeSelector">
+      <button class="mode-btn active" data-mode="zip"><i class="fa-solid fa-file-zipper"></i> ZIP</button>
+      <button class="mode-btn" data-mode="folder"><i class="fa-solid fa-folder"></i> Folder</button>
+      <button class="mode-btn" data-mode="files"><i class="fa-solid fa-file"></i> Files</button>
+    </div>
+
+    <!-- Upload Area -->
+    <div class="form-group">
+      <div class="upload-zone" id="uploadZone">
+        <i class="fa-brands fa-html5 upload-icon" id="fileIcon"></i>
+        <div class="upload-title" id="fileName">Select Project</div>
+        <div class="upload-subtitle" id="fileSize">ZIP / Folder / Multiple Files</div>
+      </div>
+      <input type="file" id="fileInput" style="display: none" multiple>
+      <input type="file" id="folderInput" style="display: none" webkitdirectory multiple>
+      <input type="file" id="zipInput" style="display: none" accept=".zip">
+
+      <!-- File Tree -->
+      <div class="file-tree-container" id="fileTreeContainer">
+        <div id="fileTreeContent"></div>
+        <div class="tree-stats" id="treeStats">
+          <span><strong id="fileCount">0</strong> Files</span>
+          <span><strong id="folderCount">0</strong> Folders</span>
+          <span><strong id="totalSize">0 KB</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-deploy" id="deployBtn" onclick="deployToVercel()">
+      <i class="fa-solid fa-rocket"></i> DEPLOY TO VERCEL
+    </button>
+
+    <div class="progress-section" id="progressSection">
+      <div class="timeline">
+        <div class="timeline-step active" id="step1">
+          <div class="step-icon"><i class="fa-solid fa-folder-open"></i></div>
+          <div class="step-text">Reading Data</div>
+        </div>
+        <div class="timeline-step" id="step2">
+          <div class="step-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+          <div class="step-text">Converting Files (Base64)</div>
+        </div>
+        <div class="timeline-step" id="step3">
+          <div class="step-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <div class="step-text">Uploading to Server</div>
+        </div>
+        <div class="timeline-step" id="step4">
+          <div class="step-icon"><i class="fa-solid fa-gear"></i></div>
+          <div class="step-text" id="statusText">Vercel Building (Waiting)</div>
+        </div>
+        <div class="timeline-step" id="step5">
+          <div class="step-icon"><i class="fa-solid fa-check-double"></i></div>
+          <div class="step-text">Deployment Ready</div>
+        </div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <div class="result-card success" id="successCard">
+      <div class="result-icon">🎉</div>
+      <div class="result-title">Deployment Successful</div>
+      <p style="color: var(--text-muted); font-size: 14px;">Your website is now live!</p>
+      <div class="url-box">
+        <a href="#" id="deployLinkUrl" target="_blank">https://domain.vercel.app/</a>
+      </div>
+      <div class="action-buttons">
+        <button class="btn-action btn-primary" id="btnOpenWeb"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Web</button>
+        <button class="btn-action btn-outline" id="btnCopyUrl"><i class="fa-regular fa-copy"></i> Copy URL</button>
+        <button class="btn-action btn-outline" onclick="resetUI()"><i class="fa-solid fa-rotate-right"></i> Deploy Again</button>
+      </div>
+    </div>
+
+    <div class="result-card error" id="errorCard">
+      <div class="result-icon">⚠️</div>
+      <div class="result-title">Deployment Failed</div>
+      <p id="errorMsg" style="color: #ff8888; font-size: 14px; margin-bottom: 16px;">Error detail here</p>
+      <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; font-size: 13px; color: #ffaa00;">
+        💡 <b>Solution:</b> Pastikan ukuran tidak lebih dari batas atau periksa nama project.
+      </div>
+      <button class="btn-action btn-outline" style="margin: 20px auto 0;" onclick="resetUI()">
+        <i class="fa-solid fa-rotate-left"></i> Try Again
+      </button>
+    </div>
+
+    <div class="contact-bar">
+      <a href="https://wa.me/6282394961470" class="contact-link" target="_blank" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+      <a href="https://t.me/dimzzrara" class="contact-link" target="_blank" title="Telegram"><i class="fa-brands fa-telegram"></i></a>
+      <a href="https://whatsapp.com/channel/0029VbBodfzJ3jv1r0MSiG0N" class="contact-link" target="_blank" title="Channel"><i class="fa-solid fa-bullhorn"></i></a>
+    </div>
+
+    <div class="footer">
+      Created by <span>Arya | Deploy</span> • 2026 Edition
+    </div>
+
+  </div>
+
+  <script>
+    // ===========================================
+    // GLOBAL VARIABLES & DOM
+    // ===========================================
+    const inputProject = document.getElementById('projectName');
+    const fileInput = document.getElementById('fileInput');
+    const folderInput = document.getElementById('folderInput');
+    const zipInput = document.getElementById('zipInput');
+    const uploadZone = document.getElementById('uploadZone');
+    const fileIcon = document.getElementById('fileIcon');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const deployBtn = document.getElementById('deployBtn');
+    
+    let currentMode = 'zip';
+    let projectFiles = []; // Array of {path, blob}
+    let totalProjectSize = 0;
+
+    // ===========================================
+    // UI INTERACTIONS
+    // ===========================================
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentMode = this.dataset.mode;
+        resetUploadZone();
+        if (currentMode === 'zip') zipInput.click();
+        else if (currentMode === 'folder') folderInput.click();
+        else fileInput.click();
+      });
+    });
+
+    uploadZone.addEventListener('click', () => {
+      if (currentMode === 'zip') zipInput.click();
+      else if (currentMode === 'folder') folderInput.click();
+      else fileInput.click();
+    });
+
+    uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('dragover'); });
+    
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+        const entry = e.dataTransfer.items[0].webkitGetAsEntry();
+        if (entry && entry.isDirectory) {
+          selectMode('folder');
+          handleFolderDrop(entry);
+          return;
+        }
+      }
+      if (e.dataTransfer.files.length > 0) {
+        let isZip = false;
+        for (let f of e.dataTransfer.files) { if (f.name.toLowerCase().endsWith('.zip')) { isZip = true; break; } }
+        
+        if (isZip) {
+          selectMode('zip');
+          zipInput.files = e.dataTransfer.files;
+          zipInput.dispatchEvent(new Event('change'));
+        } else {
+          selectMode('files');
+          fileInput.files = e.dataTransfer.files;
+          fileInput.dispatchEvent(new Event('change'));
+        }
+      }
+    });
+
+    function selectMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+    }
+
+    inputProject.addEventListener('input', function() {
+      // Validasi lowercase, alphanumeric, dan '-'
+      this.value = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    });
+
+    // ===========================================
+    // FILE PROCESSING
+    // ===========================================
+    zipInput.addEventListener('change', async function() {
+      if (this.files.length === 0) return;
+      const file = this.files[0];
+      if (!file.name.toLowerCase().endsWith('.zip')) {
+        return showAlert('Not a ZIP', 'Please select a .zip file.');
+      }
+      try {
+        const zip = await JSZip.loadAsync(file);
+        const files = [];
+        let allPaths = [];
+
+        zip.forEach((relativePath, zipEntry) => { if (!zipEntry.dir) allPaths.push(relativePath); });
+        
+        // Remove root folder if all files are inside a single folder
+        let rootFolder = null;
+        if (allPaths.length > 0) {
+          const parts = allPaths[0].split('/');
+          if (parts.length > 1) {
+            const possibleRoot = parts[0];
+            let allUnderRoot = allPaths.every(p => p.startsWith(possibleRoot + '/'));
+            if (allUnderRoot) rootFolder = possibleRoot;
+          }
+        }
+
+        for (let [relativePath, zipEntry] of Object.entries(zip.files)) {
+          if (zipEntry.dir) continue;
+          let finalPath = rootFolder && relativePath.startsWith(rootFolder + '/') 
+                          ? relativePath.substring(rootFolder.length + 1) : relativePath;
+          
+          // Decode as binary array to prevent corruption, then to Blob
+          const uint8 = await zipEntry.async('uint8array');
+          files.push({ path: finalPath, blob: new Blob([uint8]) });
+        }
+
+        if (files.length === 0) return showAlert('Empty ZIP', 'No files found in the ZIP archive.');
+        setProjectData(file.name, files);
+      } catch (err) {
+        showAlert('ZIP Error', 'Failed to read ZIP file: ' + err.message);
+      }
+      this.value = ""; // Reset input
+    });
+
+    folderInput.addEventListener('change', function() {
+      if (this.files.length === 0) return;
+      const files = [];
+      let rootFolder = null;
+      
+      const pathMap = {};
+      for (let f of this.files) {
+        const parts = f.webkitRelativePath.split('/');
+        if (parts.length > 1) { pathMap[parts[0]] = (pathMap[parts[0]] || 0) + 1; }
+      }
+      
+      let maxCount = 0;
+      for (let [root, count] of Object.entries(pathMap)) {
+        if (count > maxCount) { maxCount = count; rootFolder = root; }
+      }
+      
+      for (let f of this.files) {
+        let rel = f.webkitRelativePath || f.name;
+        if (rootFolder && rel.startsWith(rootFolder + '/')) rel = rel.substring(rootFolder.length + 1);
+        files.push({ path: rel, blob: f });
+      }
+      setProjectData('Folder Selected', files);
+      this.value = "";
+    });
+
+    fileInput.addEventListener('change', function() {
+      if (this.files.length === 0) return;
+      const files = Array.from(this.files).map(f => ({ path: f.name, blob: f }));
+      setProjectData('Files Selected', files);
+      this.value = "";
+    });
+
+    function handleFolderDrop(entry) {
+      const allEntries = [];
+      const reader = entry.createReader();
+      const readEntries = () => {
+        reader.readEntries(results => {
+          if (results.length > 0) { allEntries.push(...results); readEntries(); }
+          else processEntries(allEntries);
+        });
+      };
+      readEntries();
+    }
+
+    async function processEntries(entries) {
+      const files = [];
+      const processEntry = async (entry, basePath = '') => {
+        if (entry.isDirectory) {
+          const reader = entry.createReader();
+          const subEntries = await new Promise(res => {
+            const items = [];
+            const read = () => reader.readEntries(r => r.length > 0 ? (items.push(...r), read()) : res(items));
+            read();
+          });
+          for (let sub of subEntries) await processEntry(sub, basePath + entry.name + '/');
+        } else {
+          const file = await new Promise(res => entry.file(res));
+          files.push({ path: basePath + entry.name, blob: file });
+        }
+      };
+      for (let entry of entries) await processEntry(entry);
+      setProjectData('Folder Dropped', files);
+    }
+
+    // ===========================================
+    // UTILS & UI UPDATES
+    // ===========================================
+    function setProjectData(label, files) {
+      projectFiles = files;
+      totalProjectSize = files.reduce((sum, f) => sum + f.blob.size, 0);
+      
+      fileIcon.className = "fa-solid fa-circle-check upload-icon";
+      fileIcon.style.background = "linear-gradient(135deg, #00ff80, #00cc66)";
+      fileIcon.style.webkitBackgroundClip = "text";
+      fileIcon.style.webkitTextFillColor = "transparent";
+      fileName.innerHTML = `${label} • ${files.length} files`;
+      fileSize.innerHTML = `${(totalProjectSize / 1024).toFixed(2)} KB`;
+      
+      deployBtn.disabled = false;
+      renderFileTree(files);
+    }
+
+    function renderFileTree(files) {
+      const tree = {};
+      for (let f of files) {
+        const parts = f.path.split('/');
+        let current = tree;
+        for (let i = 0; i < parts.length; i++) {
+          if (i === parts.length - 1) {
+            if (!current._files) current._files = [];
+            current._files.push(parts[i]);
+          } else {
+            if (!current[parts[i]]) current[parts[i]] = {};
+            current = current[parts[i]];
+          }
+        }
+      }
+
+      let html = '';
+      let folderCount = 0;
+      function renderNode(node, indent = 0) {
+        Object.keys(node).filter(k => k !== '_files').forEach(key => {
+          folderCount++;
+          html += `<div class="tree-item" style="padding-left:${indent * 16}px"><i class="fa-solid fa-folder"></i> ${key}</div>`;
+          renderNode(node[key], indent + 1);
+        });
+        if (node._files) {
+          node._files.sort().forEach(f => {
+            html += `<div class="tree-item" style="padding-left:${(indent + 1) * 16}px"><i class="fa-solid fa-file"></i> ${f}</div>`;
+          });
+        }
+      }
+      renderNode(tree);
+      document.getElementById('fileCount').innerText = files.length;
+      document.getElementById('folderCount').innerText = folderCount;
+      document.getElementById('totalSize').innerText = (totalProjectSize / 1024).toFixed(2) + ' KB';
+      document.getElementById('fileTreeContent').innerHTML = html;
+      document.getElementById('fileTreeContainer').style.display = 'block';
+    }
+
+    function resetUploadZone() {
+      projectFiles = [];
+      fileIcon.className = "fa-brands fa-html5 upload-icon";
+      fileIcon.style = "";
+      fileName.innerHTML = 'Select Project';
+      fileSize.innerHTML = 'ZIP / Folder / Multiple Files';
+      document.getElementById('fileTreeContainer').style.display = 'none';
+      deployBtn.disabled = true;
+    }
+
+    function resetUI() {
+      inputProject.value = "";
+      resetUploadZone();
+      document.getElementById('successCard').style.display = 'none';
+      document.getElementById('errorCard').style.display = 'none';
+      document.getElementById('progressSection').style.display = 'none';
+      deployBtn.style.display = 'flex';
+      deployBtn.innerHTML = '<i class="fa-solid fa-rocket"></i> DEPLOY TO VERCEL';
+    }
+
+    function showAlert(title, text) {
+      Swal.fire({ icon: 'warning', title, text, background: 'rgba(20,20,25,0.95)', color: '#fff', confirmButtonColor: '#00ffff' });
+    }
+
+    function setProgress(step, percent) {
+      document.getElementById('progressFill').style.width = percent + '%';
+      for(let i=1; i<=5; i++) {
+        let el = document.getElementById(`step${i}`);
+        if(i < step) {
+          el.className = 'timeline-step done';
+          el.querySelector('.step-icon').innerHTML = '<i class="fa-solid fa-check"></i>';
+        } else if(i === step) {
+          el.className = 'timeline-step active';
+          let icon = i===1?'fa-folder-open':i===2?'fa-magnifying-glass':i===3?'fa-cloud-arrow-up':i===4?'fa-gear':'fa-check-double';
+          el.querySelector('.step-icon').innerHTML = `<i class="fa-solid ${icon} ${i < 5 ? 'spinner' : ''}"></i>`;
+        } else {
+          el.className = 'timeline-step';
+        }
+      }
+    }
+
+    // Convert FILE/BLOB to BASE64 String securely for API transmission
+    function fileToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+      });
+    }
+
+    // ===========================================
+    // CORE DEPLOYMENT LOGIC (FRONTEND -> BACKEND)
+    // ===========================================
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+
+    async function deployToVercel() {
+      const projectName = inputProject.value.trim();
+      
+      if (!projectName) return showAlert('Missing Data', 'Please enter a project name.');
+      if (projectFiles.length === 0) return showAlert('Missing Files', 'Please select a project to deploy.');
+      
+      // Limit to 4MB total size for serverless payloads to be safe
+      if (totalProjectSize > 4.5 * 1024 * 1024) {
+        return showAlert('File Too Large', 'Maximum project size is around 4.5MB untuk versi ini.');
+      }
+
+      deployBtn.disabled = true;
+      deployBtn.innerHTML = '<i class="fa-solid fa-circle-notch spinner"></i> Deploying...';
+      document.getElementById('progressSection').style.display = 'block';
+
+      try {
+        // Step 1: Read
+        setProgress(1, 10);
+        await delay(500);
+
+        // Step 2: Convert Files securely to Base64
+        setProgress(2, 30);
+        const filesPayload = [];
+        for (let f of projectFiles) {
+          const b64 = await fileToBase64(f.blob);
+          filesPayload.push({ file: f.path, data: b64 });
+        }
+        await delay(500);
+
+        // Step 3: Send POST to backend (Initiate deployment)
+        setProgress(3, 50);
+        const postRes = await fetch('/api/deploy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectName, files: filesPayload })
+        });
+        const postData = await postRes.json();
+
+        if (!postRes.ok || !postData.success) {
+          throw new Error(postData.error || "Gagal menginisiasi deployment.");
+        }
+
+        const deploymentId = postData.deploymentId;
+
+        // Step 4: Polling Status until READY
+        setProgress(4, 70);
+        let isReady = false;
+        let finalUrl = "";
+        let pollCount = 0;
+
+        while (!isReady) {
+          await delay(3000); // Poll setiap 3 detik
+          pollCount++;
+          if(pollCount > 20) throw new Error("Deployment timeout. Silakan cek dashboard Vercel.");
+
+          // Pada poll terakhir, berikan instruksi notifikasi Telegram
+          const notify = (pollCount >= 2) ? 'true' : 'false';
+          const sizeKb = (totalProjectSize / 1024).toFixed(2);
+          
+          const statusRes = await fetch(`/api/deploy?id=${deploymentId}&projectName=${projectName}&filesCount=${projectFiles.length}&totalSize=${sizeKb}&notify=${notify}`);
+          const statusData = await statusRes.json();
+
+          if (!statusRes.ok || !statusData.success) {
+            throw new Error(statusData.error || "Gagal mengecek status deployment.");
+          }
+
+          document.getElementById('statusText').innerText = `Vercel Status: ${statusData.readyState}`;
+
+          if (statusData.readyState === 'READY') {
+            isReady = true;
+            finalUrl = `https://${statusData.url}`;
+          } else if (statusData.readyState === 'ERROR' || statusData.readyState === 'CANCELED') {
+            throw new Error("Proses Deployment di server Vercel gagal atau dibatalkan.");
+          }
+        }
+
+        // Step 5: Success
+        setProgress(5, 100);
+        await delay(500);
+        
+        document.getElementById('progressSection').style.display = 'none';
+        deployBtn.style.display = 'none';
+        
+        const successCard = document.getElementById('successCard');
+        successCard.style.display = 'block';
+        
+        const linkEl = document.getElementById('deployLinkUrl');
+        linkEl.href = finalUrl;
+        linkEl.innerText = finalUrl;
+
+        document.getElementById('btnOpenWeb').onclick = () => window.open(finalUrl, '_blank');
+        document.getElementById('btnCopyUrl').onclick = () => {
+          navigator.clipboard.writeText(finalUrl);
+          Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, icon: 'success', title: 'URL Copied!', background: 'rgba(20,20,25,0.95)', color: '#fff' });
+        };
+
+      } catch (error) {
+        console.error(error);
+        document.getElementById('progressSection').style.display = 'none';
+        deployBtn.style.display = 'none';
+        
+        const errorCard = document.getElementById('errorCard');
+        errorCard.style.display = 'block';
+        document.getElementById('errorMsg').innerText = error.message;
+      }
+    }
+  </script>
+</body>
+        </html>
