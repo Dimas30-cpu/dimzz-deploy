@@ -1,0 +1,10 @@
+{
+  "name": "dimzz-deploy",
+  "version": "1.0.0",
+  "description": "Deploy Project to Vercel in Seconds",
+  "main": "api/deploy.js",
+  "scripts": {
+    "start": "echo 'Run locally using Vercel CLI: vercel dev'"
+  },
+  "dependencies": {}
+}
