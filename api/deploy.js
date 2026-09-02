@@ -19,23 +19,26 @@ export default async function handler(req, res) {
         return res.status(400).json({ success: false, error: "Project name and files are required." });
       }
 
-      // Sanitasi nama project agar aman untuk URL
       const cleanProjectName = projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
-      // Memastikan ada file index.html di root
-      const hasIndexHtml = files.some(f => f.file.toLowerCase() === 'index.html' || f.file.toLowerCase().endsWith('/index.html'));
-      if (!hasIndexHtml) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "File 'index.html' tidak ditemukan di root project. Pastikan file HTML utama bernama index.html!" 
-        });
-      }
+      // 💡 OTOMATIS BIKIN FILE HTML PERTAMA JADI 'index.html'
+      let hasIndex = files.some(f => f.file.toLowerCase() === 'index.html');
 
-      const vercelFiles = files.map(f => ({
-        file: f.file,
-        data: f.data,
-        encoding: "base64"
-      }));
+      const vercelFiles = files.map((f, index) => {
+        let fileName = f.file;
+
+        // Jika belum ada index.html dan file ini berakhiran .html, ubah namanya jadi index.html!
+        if (!hasIndex && fileName.toLowerCase().endsWith('.html')) {
+          fileName = 'index.html';
+          hasIndex = true; // Tandai bahwa index.html sudah dibuat
+        }
+
+        return {
+          file: fileName,
+          data: f.data,
+          encoding: "base64"
+        };
+      });
 
       const vercelResponse = await fetch('https://api.vercel.com/v13/deployments', {
         method: 'POST',
@@ -60,15 +63,12 @@ export default async function handler(req, res) {
         });
       }
 
-      // Ambil URL resmi bawaan Vercel dulu biar gak 404 saat dibuka cepat
-      const fallbackUrl = vercelData.url;
       const customUrl = `${cleanProjectName}.vercel.app`;
 
       return res.status(200).json({
         success: true,
         deploymentId: vercelData.id,
-        url: customUrl,
-        rawUrl: fallbackUrl
+        url: customUrl
       });
 
     } catch (error) {
@@ -101,7 +101,6 @@ export default async function handler(req, res) {
       const cleanName = projectName ? projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-') : '';
       const targetUrl = cleanName ? `${cleanName}.vercel.app` : vercelData.url;
 
-      // Jika status READY dan requested notify
       if (status === 'READY' && req.query.notify === 'true') {
         await sendTelegramLog({
           projectName: cleanName || projectName, 
