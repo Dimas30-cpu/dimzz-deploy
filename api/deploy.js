@@ -19,8 +19,17 @@ export default async function handler(req, res) {
         return res.status(400).json({ success: false, error: "Project name and files are required." });
       }
 
-      // Bersihkan nama project dari spasi / karakter aneh agar aman jadi domain
+      // Sanitasi nama project agar aman untuk URL
       const cleanProjectName = projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+
+      // Memastikan ada file index.html di root
+      const hasIndexHtml = files.some(f => f.file.toLowerCase() === 'index.html' || f.file.toLowerCase().endsWith('/index.html'));
+      if (!hasIndexHtml) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "File 'index.html' tidak ditemukan di root project. Pastikan file HTML utama bernama index.html!" 
+        });
+      }
 
       const vercelFiles = files.map(f => ({
         file: f.file,
@@ -35,7 +44,7 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: cleanProjectName, // Gunakan nama yang di-input dari web
+          name: cleanProjectName,
           files: vercelFiles,
           projectSettings: { framework: null },
           target: 'production'
@@ -51,13 +60,15 @@ export default async function handler(req, res) {
         });
       }
 
-      // Buat URL rapi sesuai nama project yang diisi di web
+      // Ambil URL resmi bawaan Vercel dulu biar gak 404 saat dibuka cepat
+      const fallbackUrl = vercelData.url;
       const customUrl = `${cleanProjectName}.vercel.app`;
 
       return res.status(200).json({
         success: true,
         deploymentId: vercelData.id,
-        url: customUrl
+        url: customUrl,
+        rawUrl: fallbackUrl
       });
 
     } catch (error) {
@@ -87,12 +98,10 @@ export default async function handler(req, res) {
       }
 
       const status = vercelData.readyState;
-      
-      // Pakai nama project yang di-input untuk URL Telegram & Response
       const cleanName = projectName ? projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-') : '';
       const targetUrl = cleanName ? `${cleanName}.vercel.app` : vercelData.url;
 
-      // Jika READY, kirim Telegram log (Hanya 1 kali)
+      // Jika status READY dan requested notify
       if (status === 'READY' && req.query.notify === 'true') {
         await sendTelegramLog({
           projectName: cleanName || projectName, 
