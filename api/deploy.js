@@ -1,7 +1,7 @@
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '4mb', // Vercel Serverless payload limit
+      sizeLimit: '4mb',
     },
   },
 };
@@ -19,7 +19,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ success: false, error: "Project name and files are required." });
       }
 
-      // Pastikan data dikirim sebagai Base64 ke Vercel
+      // Bersihkan nama project dari spasi / karakter aneh agar aman jadi domain
+      const cleanProjectName = projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+
       const vercelFiles = files.map(f => ({
         file: f.file,
         data: f.data,
@@ -33,7 +35,7 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: projectName,
+          name: cleanProjectName, // Gunakan nama yang di-input dari web
           files: vercelFiles,
           projectSettings: { framework: null },
           target: 'production'
@@ -49,10 +51,13 @@ export default async function handler(req, res) {
         });
       }
 
+      // Buat URL rapi sesuai nama project yang diisi di web
+      const customUrl = `${cleanProjectName}.vercel.app`;
+
       return res.status(200).json({
         success: true,
         deploymentId: vercelData.id,
-        url: vercelData.url
+        url: customUrl
       });
 
     } catch (error) {
@@ -82,15 +87,18 @@ export default async function handler(req, res) {
       }
 
       const status = vercelData.readyState;
-      const realUrl = vercelData.url;
+      
+      // Pakai nama project yang di-input untuk URL Telegram & Response
+      const cleanName = projectName ? projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-') : '';
+      const targetUrl = cleanName ? `${cleanName}.vercel.app` : vercelData.url;
 
       // Jika READY, kirim Telegram log (Hanya 1 kali)
       if (status === 'READY' && req.query.notify === 'true') {
         await sendTelegramLog({
-          projectName, 
+          projectName: cleanName || projectName, 
           filesCount, 
           totalSize, 
-          url: realUrl, 
+          url: targetUrl, 
           id 
         });
       }
@@ -98,7 +106,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true,
         readyState: status,
-        url: realUrl
+        url: targetUrl
       });
 
     } catch (error) {
@@ -142,6 +150,6 @@ async function sendTelegramLog({ projectName, filesCount, totalSize, url, id }) 
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
     });
   } catch (error) {
-    console.error("Telegram send failed:", error); // Fail gracefully
+    console.error("Telegram send failed:", error);
   }
 }
